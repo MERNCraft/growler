@@ -2,7 +2,7 @@
 
 React Context, Component and Routes hierarchy with Outlet, to demonstrate a custom message growler system.
 
-[Demo](https://MERNCraft/ithub.io/growler)
+[Demo](https://merncraft.github.io/growler/?#/)
 
 Run `npm i` to install Node modules.
 
@@ -20,6 +20,8 @@ This demo uses [DOMPurify](https://www.npmjs.com/package/dompurify) to sanitize 
 ## Running code from a Growl
 
 However, DOMPurify will remove any active code from a plain HTML string. If running code from a growl is important for you, create your own `message`s with a format like `{ __html: "<h1>Your HTML goes here</h1>" }. If the HTML is well-formatted, the GrowlerComponent will know how to deal with this. The Create Dangerous Growl gives you an example of this.
+
+**NOTE: In the online demo on GitHub, this may fail, unless you use [this link](https://merncraft.github.io/growler/?#/)**
 
 ## Forcing a Growl to close
 
