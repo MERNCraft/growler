@@ -4,8 +4,11 @@
  * A growl has the format:
  *   {
  *     message: <string || {__html: "HTML markup string"},
- *     delay: <integer milliseconds>,
- *     index: <incrementing integer>
+ *     delay:   <integer milliseconds>,
+ *     index:   <incrementing integer>,
+ *     time:    <milliseconds from epoch when growl created>
+ *   + active:  <undefined | true>,
+ *   + closing: <undefined | true>
  *   }
  *
  * Animation of growls is triggered by a CSS transition. By default
@@ -29,44 +32,44 @@
  */
 
 
-import { useRef, useState, useEffect, useContext } from 'react'
+import { useEffect, useContext } from 'react'
 import { GrowlContext } from './GrowlContext'
+// import { getContextValues } from '../state'
+// import '../css/growl.css'
 
 
 export default function Growler() {
-  const { growl, close } = useContext(GrowlContext)
-  // { message: <string>, delay: <integer>, index: <integer>}
-  const growlRef = useRef()   // creates pointer to div#growls
-  const indexRef = useRef(-1) // checks for duplicate growls
-  const [ latest, setLatest ] = useState() // used to add "active"
-  const [ activeGrowls, setActiveGrowls ] = useState([])
+  const {
+    growls, // [{ message, delay, index, time + active, closing }]
+    start,  // function to add `start` to a growl
+    closeGrowl, // function to set { ..., closing: true } in growl
+    dismiss
+  } = useContext(GrowlContext)
+  // } = getContextValues("GrowlContext")
 
 
-  const showGrowl = () => {
-    // Prevent StrictMode from showing multiple growls
-    if (!growl || growl?.index === indexRef.current) { return }
+  const treatNewGrowls = () => {
+    if (!growls) { return }
 
-    if (growl.delay) {
-      // Hide the growl automatically after the delay. The 0 is
-      // there to make room for the event argument in hideGrowl.
-      setTimeout(hideGrowl, growl.delay, 0, growl.index)
+    const newGrowls = growls
+      .filter( growl => !growl.active)
+
+    if (newGrowls.length) {
+      // Calculate the duration of each new growl in milliseconds
+      const indexEnds = newGrowls.reduce(( indexEnd, growl ) => {
+        const { index, delay, time } = growl
+        const end = delay
+          ? time + delay - Date.now() // ms duration
+          : 0
+        indexEnd[index] = end
+
+        return indexEnd
+      }, {}) // { <index>: <millisecond duration>, ... }
+
+      // Tell GrowlContext to add { ... active: true } to each
+      // of the new growls, and then re-render
+      setTimeout(() => start(indexEnds), 100)
     }
-
-    indexRef.current = growl.index
-    setLatest(growl.index) // to add the "active" class in a moment
-    setActiveGrowls(current => [...current, growl])
-  }
-
-
-  const activate = () => {
-    // Add the "active" class after the element has been added to
-    // the DOM, to make it transition in from the right.
-    const dataIndex = `[data-index="${latest}"]`
-    const growlP = growlRef.current.querySelector(dataIndex)
-
-    // Without a timeout, the new element may appear immediately
-    // with the "active" class, and the transition will not run.
-    setTimeout(() => growlP?.classList.add("active"), 100)
   }
 
 
@@ -76,15 +79,11 @@ export default function Growler() {
       index = event.target.closest("p").dataset.index
     }
 
-    // Find the DOM element...
-    const dataIndex = `[data-index="${index}"]`
-    const growlP = growlRef.current.querySelector(dataIndex)
-    // ... and remove the class that sets its transform.
-    growlP?.classList.remove("active")
+    closeGrowl(index)
   }
 
 
-  const moveGrowl = ({ target }) => {
+  const shrink = ({ target }) => {
     const { className } = target // "active", null, "shrink"
 
     if (!className) {
@@ -97,39 +96,47 @@ export default function Growler() {
       // the growl element from the DOM.
       const index = Number(target.dataset.index)
 
-      setActiveGrowls(current  => (
-        current.filter( growl => growl.index !== index)
-      ))
+      dismiss(index)
     }
   }
 
 
-  const closeGrowl = () => {
-    if (!close) { return }
-    hideGrowl(0, close)
+  const showGrowlerMounted = () => {
+    console.log("Growler mounted")
+
+    return () => {
+      console.log("Growler dismounted")
+    }
   }
-
-  // Trigger effects when a new growl is detected...
-  useEffect(showGrowl, [growl?.index])
-  // ... when a new request to force close a growl is detected...
-  useEffect(closeGrowl, [close])
-  // ... and to add the "active" class immediately after a new
-  // a new growl has been added to the DOM
-  useEffect(activate, [latest])
+  useEffect(showGrowlerMounted, [])
 
 
-  const growls = activeGrowls.map(({ message, delay, index }) => {
+  useEffect(treatNewGrowls, [growls])
+
+
+  const growlArray = growls.map(({
+    message,
+    delay,
+    index,
+    active,
+    closing
+  }) => {
     // Choose between an HTML child or plain text.
     const span = message.__html
       ? <span dangerouslySetInnerHTML={message} />
       : <span>{message}</span>
 
+    const className = (!active || closing )
+      ? null // the growl has just been created or is closing
+      : "active" // style.transform: translate(-100%)
+
     return (
-    <p
+      <p
         key={index}
         data-index={index}
         data-delay={delay}
-        onTransitionEnd={moveGrowl}
+        className={className}
+        onTransitionEnd={shrink}
       >
         {(!delay || delay > 5555) &&
           < button
@@ -147,9 +154,8 @@ export default function Growler() {
   return (
     <div
       id="growls" // You may want to set height and overflow
-      ref={growlRef} // used to detect growls by their index value
     >
-      {growls}
+      {growlArray}
     </div>
   )
 }

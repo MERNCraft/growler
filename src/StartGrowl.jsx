@@ -64,9 +64,10 @@ export default function StartGrowl() {
 
 
   const indices = open.map( index => (
-    <div>
+    <div
+      key={index}
+    >
       <button
-        key={index}
         onClick={forceClose}
         data-index={index}
       >
