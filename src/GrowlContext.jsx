@@ -97,6 +97,8 @@ export const GrowlProvider = ({ children }) => {
       .keys(indexEnds)
       .map(Number) // [index, ...]
 
+    console.log("indexEnds:", indexEnds)
+
     // Create a new growl object for setGrowls, with the effect of
     // creating timeouts for auto-dismissing growls
     setGrowls(current => (
@@ -145,6 +147,50 @@ export const GrowlProvider = ({ children }) => {
   }
 
 
+  const wrap = index => {
+    if (!growls.find(growl => (
+      growl.index === index)
+    )) {
+      return
+    }
+
+    setGrowls(current => (
+      current.map( growl => {
+        if (growl.index === index) {
+          growl.shrink = true
+        }
+
+        return growl
+      })
+    ))
+  }
+
+
+  const setDelay = (index, type, delay) => { 
+    if (!growls.find(growl => (
+      growl.index === index)
+    )) {
+      return
+    }
+
+    setGrowls(current => (
+      current.map( growl => {
+        if (growl.index === index) {
+          switch (type) {
+            case "slide":
+              growl.slideDelay = delay
+            break
+            case "shift":
+              growl.shiftDelay = delay
+          }
+        }
+
+        return growl
+      })
+    ))
+  }
+
+
   const dismiss = index => {
     setGrowls(current => (
       current.filter(growl => growl.index !== index)
@@ -166,6 +212,8 @@ export const GrowlProvider = ({ children }) => {
         // For Growler component
         growls,
         start,
+        wrap,
+        setDelay,
         dismiss,
         // For both clients and Growler
         closeGrowl

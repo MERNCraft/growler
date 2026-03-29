@@ -9,7 +9,10 @@ Run `npm i` to install Node modules.
 This demo uses GrowlContext to relay the latest growl to the Growler component.
 
 To demonstrate that growl messages will be visible over any other components, `react-router-dom` is used to create two different routes.
+
 The Growler component is added to a Frame component, which acts as a parent for all routes. The Frame hosts an Outlet for all other routes, with Growler in a layer about them.
+
+To demonstrate that the growl messagees will be maintained even if the Growler component is remounted, the Force Remount button will create a new (but identical) `<Routes>` component, and all its children will be remounted, including `<Growler>`.
 
 You don't need to use `react-router-dom` if your project does not require it. Just make sure that `<Growler />` is the last component mounted in the component tree.
 

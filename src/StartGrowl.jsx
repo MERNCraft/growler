@@ -14,7 +14,7 @@ export default function StartGrowl() {
   )
 
     // "Growl Text can contain <a href='https://MERNCraft.github.io/'>Links</a>"
-  const [ delay, setDelay ] = useState(6000)
+  const [ delay, setDelay ] = useState(5000)
   const { newGrowl, closeGrowl } = useContext(GrowlContext)
   const [ open, setOpen ] = useState([])
 

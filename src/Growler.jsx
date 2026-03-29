@@ -32,10 +32,16 @@
  */
 
 
-import { useEffect, useContext } from 'react'
+import { useEffect, useContext, useRef } from 'react'
 import { GrowlContext } from './GrowlContext'
 // import { getContextValues } from '../state'
 // import '../css/growl.css'
+
+// Manually set duration of transform and height transitions
+// This assumes that you have set CSS for div#growls.
+const TIME = 5000
+// document.querySelector("div#growls")
+        // .style.setProperty("--time", TIME+"ms")
 
 
 export default function Growler() {
@@ -43,16 +49,68 @@ export default function Growler() {
     growls, // [{ message, delay, index, time + active, closing }]
     start,  // function to add `start` to a growl
     closeGrowl, // function to set { ..., closing: true } in growl
-    dismiss
+    wrap,
+    setDelay, 
+    dismiss,
   } = useContext(GrowlContext)
   // } = getContextValues("GrowlContext")
+  const growlsRef = useRef()
+
+
+
+  /**
+   * When this componennt is re-rendered, there may be some growls
+   * which are in the process of closing. Ideally, we could
+   * calculate how far along they are (sliding right, shrinking)
+   * and continue from that point. As a shortcut, simply dismiss
+   * them completely.
+   */
+  const purgeOldGrowls = () => {
+    growlsRef.current?.style.setProperty("--time", TIME+"ms")
+
+    const oldGrowls = growls
+      .filter( growl => (
+           growl.delay
+        && growl.closing
+      ))
+
+    // oldGrowls.forEach(({ index }) => dismiss(index))
+    oldGrowls.forEach(setTransition)
+
+    // Calculate how far advanced the dismissal process i
+    function setTransition(growl) {
+      const { time, delay, index } = growl
+      const age = Date.now() - time
+      if (age < delay + TIME * 2) {
+        const slideDelay = delay - age // negative
+        const shrinkDelay = TIME + slideDelay // may be negative
+
+        if (shrinkDelay > 0) {
+          // Still sliding
+          const transition = `transform ${TIME}ms ${slideDelay}ms`
+          setDelay(index, "slide", transition)
+        } else {
+          // Already shrinking
+          const transition = `transform ${TIME}ms ${shrinkDelay}ms`
+          setDelay(index, "shrink", transition)
+        }
+
+      } else {
+        // The growl should already have gone
+        return dismiss(index)
+      }
+    }
+  }
 
 
   const treatNewGrowls = () => {
     if (!growls) { return }
 
+    console.log("growls", JSON.stringify(growls, null, '  '));
+    
+
     const newGrowls = growls
-      .filter( growl => !growl.active)
+      .filter( growl => !growl.active )
 
     if (newGrowls.length) {
       // Calculate the duration of each new growl in milliseconds
@@ -65,6 +123,8 @@ export default function Growler() {
 
         return indexEnd
       }, {}) // { <index>: <millisecond duration>, ... }
+
+      console.log("indexEnds:", indexEnds)
 
       // Tell GrowlContext to add { ... active: true } to each
       // of the new growls, and then re-render
@@ -83,24 +143,25 @@ export default function Growler() {
   }
 
 
-  const shrink = ({ target }) => {
+  const switchClass = ({ target }) => {
     const { className } = target // "active", null, "shrink"
+    const index = Number(target.dataset.index)
 
     if (!className) {
       // The "active" class has been removed: slide the growl away
-      target.classList.add("shrink")
+      wrap(index)
 
     } else if (className === "shrink") {
       // The growl is off-screen, and now has a height of 0px.
       // Remove the growl object from activeGrowls, which removes
       // the growl element from the DOM.
-      const index = Number(target.dataset.index)
 
       dismiss(index)
     }
   }
 
 
+  // <<< FOR DEBUGGING ONLY
   const showGrowlerMounted = () => {
     console.log("Growler mounted")
 
@@ -109,8 +170,11 @@ export default function Growler() {
     }
   }
   useEffect(showGrowlerMounted, [])
+  // FOR DEBUGGING ONLY >>>
 
 
+
+  useEffect(purgeOldGrowls, [])
   useEffect(treatNewGrowls, [growls])
 
 
@@ -119,16 +183,27 @@ export default function Growler() {
     delay,
     index,
     active,
-    closing
+    closing,
+    shrink,
+    slideDelay,
+    shrinkDelay
   }) => {
     // Choose between an HTML child or plain text.
     const span = message.__html
       ? <span dangerouslySetInnerHTML={message} />
       : <span>{message}</span>
 
-    const className = (!active || closing )
-      ? null // the growl has just been created or is closing
-      : "active" // style.transform: translate(-100%)
+    const className = (shrink)
+      ? "shrink"
+      : (!active || closing )
+        ? null // the growl has just been created or is closing
+        : "active" // style.transform: translate(-100%)
+
+    const style = (slideDelay && !shrink)
+      ? { transitionDelay: slideDelay } // removed if now shrinking
+      : (shrinkDelay)
+        ? { transitionDelay: shrinkDelay }
+        : {}
 
     return (
       <p
@@ -136,7 +211,8 @@ export default function Growler() {
         data-index={index}
         data-delay={delay}
         className={className}
-        onTransitionEnd={shrink}
+        onTransitionEnd={switchClass}
+        style={style}
       >
         {(!delay || delay > 5555) &&
           < button
@@ -154,6 +230,7 @@ export default function Growler() {
   return (
     <div
       id="growls" // You may want to set height and overflow
+      ref={growlsRef}
     >
       {growlArray}
     </div>

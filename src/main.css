@@ -49,7 +49,7 @@ div.start-growl {
   --open: 40vh;
   --text: 11em;
   --height: calc(var(--open) - var(--text));
-  height: 100vh;
+  height: calc(100vh - 40px); /* space for Force Remount button */
   width: var(--width);
   display: flex;
   flex-direction: column;
@@ -121,6 +121,7 @@ div#growls {
   --dark: #222d;
   --long: #200d;
   --high: #400d;
+  --time: 0.25s;
 
   --edge: 1px;
   --side: calc(var(--edge) * -1);
@@ -146,8 +147,8 @@ div#growls {
     border: var(--edge) outset var(--border);
     border-radius: var(--gap);
     overflow: auto;
-    transform: translate(100%);
-    transition: 0.5s;
+    transform: translate(90%); /* SET TO 100% */
+    transition: var(--time);
 
     &.active {
       transform: translate(0%);
