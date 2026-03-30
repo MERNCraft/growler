@@ -41,8 +41,6 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-
-  text-align: center;
 }
 
 div.start-growl {
@@ -56,7 +54,19 @@ div.start-growl {
   justify-content: space-around;
   align-items: center;
 
+  & form div {
+    margin-top: 1em;
+
+    & span {
+      display: inline-block;
+      width: 5em;
+    }
+  }
+
   & div.open {
+    container-type: size;
+    container-name: open;
+
     flex-grow: 1;
     border: 1px inset #888;
     background-color: #000;
@@ -65,14 +75,26 @@ div.start-growl {
     height: var(--open);
 
     & div.growls {
-      height: var(--height);
       width: var(--width);
+      margin-top: 1em;
+      overflow: auto;
+    }
+    
+    & ul.info {
       overflow: auto;
     }
   }
 
+  @container open (height < 32em) {
+    ul,
+    div.growls {
+      height: calc(50% - 2em);
+    }
+  }
+
   & p {
-    font-size: small;
+    margin: 0.5em;
+    text-align: center;
   }
 
   /* BUTTONS // BUTTONS // BUTTONS // BUTTONS // BUTTONS */

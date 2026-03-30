@@ -22,7 +22,7 @@ import './growl.css'
 
 // Manually set duration of @keyframes animations.
 // This assumes that you have set CSS for div#growls.
-const GROWL_DURATION = 5000
+const GROWL_DURATION = 500
 
 
 export default function Growler() {
@@ -59,8 +59,6 @@ export default function Growler() {
         ? over - GROWL_DURATION // dismissed while still sliding in
         : 0 // dismissed after sliding all the way in
       : delay - age
-    console.log("on, off, delay:", on, off, delay)
-    console.log("age:", age, ", over:", over, ", start:", start)
 
     return `
       vanish
@@ -111,8 +109,6 @@ export default function Growler() {
         // A manually dismissed growl may still be opening
         growl.animation = `${appear(growl)}`
       }
-
-      console.log("OLD growl.animation:", growl.animation)
     })
 
     forceRender()
@@ -139,9 +135,6 @@ export default function Growler() {
         }
 
         growl.active = true
-
-        console.log("NEW growl.animation:", growl.animation)
-
       })
 
       forceRender()
@@ -171,16 +164,16 @@ export default function Growler() {
   }
 
 
-  // <<< FOR DEBUGGING ONLY
-  const showGrowlerMounted = () => {
-    console.log("Growler mounted")
+  // // <<< FOR DEBUGGING ONLY
+  // const showGrowlerMounted = () => {
+  //   console.log("Growler mounted")
 
-    return () => {
-      console.log("Growler dismounted")
-    }
-  }
-  useEffect(showGrowlerMounted, [])
-  // FOR DEBUGGING ONLY >>>
+  //   return () => {
+  //     console.log("Growler dismounted")
+  //   }
+  // }
+  // useEffect(showGrowlerMounted, [])
+  // // FOR DEBUGGING ONLY >>>
 
 
 
@@ -209,7 +202,6 @@ export default function Growler() {
         : ( animation )
           ? { animation }
           : {} // default opening animation will be applied
-      console.log("style:", style)
 
       return (
         <p

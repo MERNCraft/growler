@@ -3,6 +3,7 @@
   --growl-duration: 500ms;
   /* Required by @keyframes vanish */
   --growl-height: 4.75em;
+  --growl-padding: 0 1em;
 }
 
 div#growls {
@@ -29,7 +30,7 @@ div#growls {
     justify-content: center;
     align-items: center;
     margin: 0;
-    padding: 0 var(--gap) 0 1em;
+    padding: var(--growl-padding);
     width: 100%;
     height: var(--growl-height);
     background-color: var(--dark);
@@ -79,15 +80,15 @@ div#growls {
 }
 
 @keyframes vanish {
-  0% {transform: translateX(0%);}
+  0% {transform: translateX(0%)}
   80% {
     transform: translateX(100%);
     height: var(--growl-height);
-    padding: 1em 0;
+    padding: var(--growl-padding);
   }
   100% {
     transform: translateX(100%);
     height: 0;
-    padding: 0 0;
+    padding: 0;
   }
 }

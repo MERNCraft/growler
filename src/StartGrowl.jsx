@@ -9,15 +9,21 @@ import { GrowlContext } from './GrowlContext'
 import RouteSwitcher from './RouteSwitcher'
 
 
+const DELAY = 2000
+
+
 export default function StartGrowl() {
   const [ message, setMessage ] = useState(
     "<h3>Text with markup and <a href='#/page2'>Link</a></h3>"
   )
 
     // "Growl Text can contain <a href='https://MERNCraft.github.io/'>Links</a>"
-  const [ delay, setDelay ] = useState(5000)
-  const { newGrowl, dismissGrowl } = useContext(GrowlContext)
-  const [ open, setOpen ] = useState([])
+  const [ delay, setDelay ] = useState(DELAY)
+  const {
+    growls,
+    newGrowl,
+    dismissGrowl
+  } = useContext(GrowlContext)
 
 
   const updateMessage = ({ target }) => {
@@ -33,11 +39,10 @@ export default function StartGrowl() {
   const createGrowl = event => {
     event.preventDefault()
 
-    const index = newGrowl({
+    newGrowl({
       message,
       delay
     })
-    setOpen(current => [...current, index])
   }
 
 
@@ -51,20 +56,18 @@ export default function StartGrowl() {
       </button>` }
     const index = newGrowl({
       message,
-      delay
+      delay: 0
     })
-    setOpen(current => [...current, index])
   }
 
 
   const forceClose = ({ target }) => {
     const index = Number(target.dataset.index)
     dismissGrowl(index)
-    setOpen(current => current.filter( value => value !== index))
   }
 
 
-  const indices = open.map( index => (
+  const closebuttons = growls.map(({ index }) => (
     <div
       key={index}
     >
@@ -90,7 +93,6 @@ export default function StartGrowl() {
             value={message}
           />
         </div>
-        <p>Use a Delay of 0, to create a growl that stays open until manually closed. Use a positive number to create a growl that will close automatically after than number of millisecond. A minimum delay of 1000 ms is applied. For delays of 6 seconds and more, a Close Button will be added, so the end-user can close the growl manually.</p>
         <div>
           <span>Delay:</span>
           <input
@@ -114,14 +116,17 @@ export default function StartGrowl() {
       </form>
       <RouteSwitcher />
       <div className="open">
-        <h3>For demonstration only:</h3>
-        <p>Growls that were closed manually and automatically will remain here, but clicking on their buttons will have no bad effects. The list below is reset when the page is re-opened.</p>
+        <ul class="info">
+          <li>Use a Delay of 0, to create a growl that stays open until manually closed. </li>
+          <li>Use a positive number to create a growl that will close automatically after than number of millisecond.</li>
+          <li>A minimum delay of 1000 ms is applied.</li>
+          <li>For delays of 6 seconds and more, a Close Button will be added, so the end-user can close the growl manually.</li>
+          </ul>
         <hr />
-        <div className="growls">{indices}</div>
+        <div className="growls">{closebuttons}</div>
       </div>
       <div>
-        <p>Growls are visible over all other content.<br/>Visit <Link to="page2">Page 2</Link> to see this.<br/>
-        (The list above will be cleared.)</p>
+        <p>Growls are visible over all other content. Visit <Link to="page2">Page 2</Link> to see this.</p>
       </div>
     </div>
 
