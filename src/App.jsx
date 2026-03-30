@@ -1,5 +1,5 @@
 /**
- * 01-SimplyLazy/App.jsx
+ * App.jsx
  */
 
 import { HashRouter as Router } from 'react-router-dom'

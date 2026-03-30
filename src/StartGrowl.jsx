@@ -6,6 +6,7 @@
 import { useState, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { GrowlContext } from './GrowlContext'
+import RouteSwitcher from './RouteSwitcher'
 
 
 export default function StartGrowl() {
@@ -15,7 +16,7 @@ export default function StartGrowl() {
 
     // "Growl Text can contain <a href='https://MERNCraft.github.io/'>Links</a>"
   const [ delay, setDelay ] = useState(5000)
-  const { newGrowl, closeGrowl } = useContext(GrowlContext)
+  const { newGrowl, dismissGrowl } = useContext(GrowlContext)
   const [ open, setOpen ] = useState([])
 
 
@@ -58,7 +59,7 @@ export default function StartGrowl() {
 
   const forceClose = ({ target }) => {
     const index = Number(target.dataset.index)
-    closeGrowl(index)
+    dismissGrowl(index)
     setOpen(current => current.filter( value => value !== index))
   }
 
@@ -111,6 +112,7 @@ export default function StartGrowl() {
           Create Dangerous Growl
         </button>
       </form>
+      <RouteSwitcher />
       <div className="open">
         <h3>For demonstration only:</h3>
         <p>Growls that were closed manually and automatically will remain here, but clicking on their buttons will have no bad effects. The list below is reset when the page is re-opened.</p>

@@ -32,7 +32,7 @@ The list of Close Growl buttons is for demonstration purposes only. The GrowlCon
 
 You can think of the value returned from `newGrowl()` as being like the value returned by `setTimeout()`; if you don't keep track of it manually, it is destroyed automatically. Calling `clearTimeout()` with the index of a timeout that has already fired has no effect.
 
-In the same way, calling `closeGrowl()` with the index of a growl that has already closed has no effect.
+In the same way, calling `dismissGrowl()` with the index of a growl that has already closed has no effect.
 
 ## CSS
 

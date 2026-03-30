@@ -24,7 +24,7 @@
  */
 
 
-import { createContext, useState } from 'react'
+import { createContext, use, useState } from 'react'
 // Comment out the following line if you do not intend to use
 // unsafe userland markup and links in your growls, or DOMPurify
 // is not installed
@@ -40,14 +40,22 @@ const MIN_DELAY = 1000 // Ensure delay is at least this value
 
 export const GrowlProvider = ({ children }) => {
   const [ last, setLast ] = useState(0) // tracks index to use
+  const [ render, setRender ] = useState(0)
+  const [ growlDuration, setGrowlDuration ] = useState(0)
+  
   const [ growls, setGrowls ] = useState([])
   // { message: <string | {__html: HTML string}>,
   //   delay:   <integer>,
   //   index:   <integer>
-  //   time:    <Date>,
+  //   on:    <ms since epoch>,
   // + active:  <boolean>,
-  // + closing: <boolean>
+  // + off:    <ms since epoch>
   // }
+
+
+  const forceRender = () => {
+    setRender(render + 1)
+  }
 
 
   const newGrowl = growl => {
@@ -74,7 +82,7 @@ export const GrowlProvider = ({ children }) => {
     // Use a unique incrementing index
     const index = last + 1
     growl.index = index
-    growl.time = Date.now() // milliseconds since epoch
+    growl.on = Date.now() // milliseconds since epoch
 
     setGrowls(current => [...current, growl])
     setLast(index)
@@ -84,122 +92,42 @@ export const GrowlProvider = ({ children }) => {
 
 
   /**
-   * All index values in indexEnds will be for growls that do not
-   * yet have an .active entry yet. Add...
-   *   { ... active: true }
-   * ... to each such growl, and start a timeout to dismiss any
-   * growl that has an `end` duration.
-   *
-   * @param {object} indexEnds has format { <index>: <ms integer> }
+   * Add { ... off: <integer ms> } to the growl that has the given
+   * index. If Growler is remounted, this will ensure that the
+   * "vanish" animation is given the correct (negative) delay, so
+   * that its animation continues smoothly.
    */
-  const start = indexEnds => {
-    const indices = Object
-      .keys(indexEnds)
-      .map(Number) // [index, ...]
+  const dismissGrowl = index => {
+    if (growls.find(growl => growl.index === index)) {
 
-    console.log("indexEnds:", indexEnds)
-
-    // Create a new growl object for setGrowls, with the effect of
-    // creating timeouts for auto-dismissing growls
-    setGrowls(current => (
-      current.map( growl => {
-        // Check if this growl is one that has just been created
-        const index = indices.findIndex( index => (
-          growl.index === index
-        ))
-        if (index < 0) {
-          // already active, leave unchanged
-
-        } else {
-          growl.active = true
-          const end = indexEnds[indices[index]]
-          setTimeout(closeGrowl, end, growl.index)
-        }
-
-        return growl
-      })
-    ))
-  }
-
-
-  /**
-   * Add { ... closing: true } to the growl that has the given
-   * index. In Growler, this will ensure that the "active" class is
-   * removed from the associated DOM element, so the element will
-   * return to its off-screen position on the right.
-   */
-  const closeGrowl = index => {
-    if (!growls.find(growl => (
-      growl.index === index)
-    )) {
-      return
-    }
-
-    setGrowls(current => (
-      current.map( growl => {
-        if (growl.index === index) {
-          growl.closing = true
-        }
-
-        return growl
-      })
-    ))
-  }
-
-
-  const wrap = index => {
-    if (!growls.find(growl => (
-      growl.index === index)
-    )) {
-      return
-    }
-
-    setGrowls(current => (
-      current.map( growl => {
-        if (growl.index === index) {
-          growl.shrink = true
-        }
-
-        return growl
-      })
-    ))
-  }
-
-
-  const setDelay = (index, type, delay) => { 
-    if (!growls.find(growl => (
-      growl.index === index)
-    )) {
-      return
-    }
-
-    setGrowls(current => (
-      current.map( growl => {
-        if (growl.index === index) {
-          switch (type) {
-            case "slide":
-              growl.slideDelay = delay
-            break
-            case "shift":
-              growl.shiftDelay = delay
+      setGrowls(current => (
+        current.map( growl => {
+          if (growl.index === index) {
+            growl.off = Date.now()
+            growl.delay = 0
           }
-        }
 
-        return growl
-      })
-    ))
+          return growl
+        })
+      ))
+    }
   }
 
 
-  const dismiss = index => {
+  const clearGrowls = indices => {
+    if (!Array.isArray(indices)) {
+      indices = [indices]
+    }
+
+    if (!indices.length) {
+      // clear all growls
+      return setGrowls(() => [])
+    }
+
+    // Keep only growls whose index is not in indices
     setGrowls(current => (
-      current.filter(growl => growl.index !== index)
+      current.filter(growl => indices.indexOf(growl.index) < 0)
     ))
-  }
-
-
-  const clearGrowls = () => {
-    setGrowls(() => [])
   }
 
 
@@ -211,12 +139,9 @@ export const GrowlProvider = ({ children }) => {
         clearGrowls,
         // For Growler component
         growls,
-        start,
-        wrap,
-        setDelay,
-        dismiss,
+        forceRender,
         // For both clients and Growler
-        closeGrowl
+        dismissGrowl
       }}
     >
       {children}

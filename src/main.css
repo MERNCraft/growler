@@ -60,6 +60,7 @@ div.start-growl {
     flex-grow: 1;
     border: 1px inset #888;
     background-color: #000;
+    margin-top: 1em;
     width: var(--width);
     height: var(--open);
 
@@ -116,76 +117,3 @@ div.start-growl {
   }
 }
 
-div#growls {
-  --border: #f90;
-  --dark: #222d;
-  --long: #200d;
-  --high: #400d;
-  --time: 0.25s;
-
-  --edge: 1px;
-  --side: calc(var(--edge) * -1);
-  position: absolute;
-  right: var(--edge);
-  top: 0;
-  width: var(--width);
-  text-align: center;
-  opacity: 1;
-  overflow: hidden;
-
-  p {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0;
-    padding: 0 var(--gap) 0 1em;
-    width: 100%;
-    height: 4.75em;
-    background-color: var(--dark);
-    box-sizing: border-box;
-    border: var(--edge) outset var(--border);
-    border-radius: var(--gap);
-    overflow: auto;
-    transform: translate(90%); /* SET TO 100% */
-    transition: var(--time);
-
-    &.active {
-      transform: translate(0%);
-    }
-    &.shrink {
-      height: 0em;
-      padding: 0em;
-    }
-  }
-
-  button {
-    position: absolute;
-    top: var(--side);
-    left: var(--side);
-    border-radius: var(--gap);
-    border: var(--edge) outset var(--border);
-    color: var(--light);
-
-    &:active {
-      border-style: inset;
-      color: #fff;
-    }
-  }
-
-  p:has(button) {
-    background-color: var(--long);
-
-    & button {
-      background-color: var(--long);
-    }
-  }
-
-  p[data-delay="0"] {
-    background-color: var(--high);
-
-    & button {
-      background-color: var(--high);
-    }
-  }
-}

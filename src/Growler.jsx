@@ -6,157 +6,167 @@
  *     message: <string || {__html: "HTML markup string"},
  *     delay:   <integer milliseconds>,
  *     index:   <incrementing integer>,
- *     time:    <milliseconds from epoch when growl created>
- *   + active:  <undefined | true>,
- *   + closing: <undefined | true>
+ *     on:      <milliseconds since epoch when growl created>
+ *   + active:  <initially undefined | immediately set to true>,
+ *   + off:     <undefined | milliseconds since epoch when done>
  *   }
  *
- * Animation of growls is triggered by a CSS transition. By default
- * a growl has an absolute left value of 100vw, which places it
- * just off-stage to the right. It also has a transform of
- * translate(0%), which has no effect.
- *
- * Immediately after a growl is first shown, it is given an
- * "active" class, which sets its transform to translate((-100%).
- * This moves it entirely onto the page. The use of a transition
- * means the DOM element slides in from the right.
- *
- * When the growl's time is up, or when you click on the close
- * button, the "active" class is removed, and the transition plays
- * in reverse. When it is complete, the class "shrink" is added,
- * to reduce the height of the off-screen growl to zero. This makes
- * any later growls slide up the screen.
- *
- * When the "shrink" animation is complete, the growl is removed
- * from activeGrowls, and so it is taken from the DOM.
+ * Animation of growls is managed by CSS.
  */
 
 
 import { useEffect, useContext, useRef } from 'react'
 import { GrowlContext } from './GrowlContext'
 // import { getContextValues } from '../state'
-// import '../css/growl.css'
+import './growl.css'
 
-// Manually set duration of transform and height transitions
+// Manually set duration of @keyframes animations.
 // This assumes that you have set CSS for div#growls.
-const TIME = 5000
-// document.querySelector("div#growls")
-        // .style.setProperty("--time", TIME+"ms")
+const GROWL_DURATION = 5000
 
 
 export default function Growler() {
   const {
-    growls, // [{ message, delay, index, time + active, closing }]
-    start,  // function to add `start` to a growl
-    closeGrowl, // function to set { ..., closing: true } in growl
-    wrap,
-    setDelay, 
-    dismiss,
+    growls, // [{ message, delay, index, on + off }]
+    dismissGrowl, // function to set { ..., done: <time> } in growl
+    clearGrowls,
+    forceRender
   } = useContext(GrowlContext)
   // } = getContextValues("GrowlContext")
-  const growlsRef = useRef()
+  const growlsRef = useRef() // used to set --growl-duration
+  
 
+  const appear = growl => {
+    const { on } = growl
+    const age = Date.now() - on
+
+    return `
+      appear
+      ease-out
+      ${GROWL_DURATION}ms
+      ${-age}ms
+      forwards`
+  }
+
+  const vanish = growl => {
+    const { on, off, delay } = growl
+    const now  = Date.now()
+    const age  = now - on // time since growl started
+    const over = off && off - on // undefined | ms since dismissed
+
+    const start = (over)
+      ? age < GROWL_DURATION
+        ? over - GROWL_DURATION // dismissed while still sliding in
+        : 0 // dismissed after sliding all the way in
+      : delay - age
+    console.log("on, off, delay:", on, off, delay)
+    console.log("age:", age, ", over:", over, ", start:", start)
+
+    return `
+      vanish
+      ease-in
+      ${GROWL_DURATION}ms
+      ${start}ms
+      forwards`
+  }
 
 
   /**
    * When this componennt is re-rendered, there may be some growls
-   * which are in the process of closing. Ideally, we could
-   * calculate how far along they are (sliding right, shrinking)
-   * and continue from that point. As a shortcut, simply dismiss
-   * them completely.
+   * which were in the process of closing. Calculate how far along
+   * they are (sliding right, shrinking) and continue the
+   * animation from that point. (There may be a flash.)
    */
-  const purgeOldGrowls = () => {
-    growlsRef.current?.style.setProperty("--time", TIME+"ms")
+  const treatOldGrowls = () => {
+    // This function is called only once, immediately after this
+    // component is mounted. It's a good place to take control of
+    // the duration of the animations.
+    growlsRef.current?.style.setProperty(
+      "--growl-duration",
+      GROWL_DURATION+"ms"
+    )
 
     const oldGrowls = growls
-      .filter( growl => (
-           growl.delay
-        && growl.closing
-      ))
+      .filter(growl => growl.active)
 
-    // oldGrowls.forEach(({ index }) => dismiss(index))
-    oldGrowls.forEach(setTransition)
+    oldGrowls.forEach((growl) => {
+      // Calculate how far advanced the dismissal process is.
+      // Dismissal starts when:
+      //   age === growl.delay
+      // Sliding right continues until:
+      //   age === growl.delay + GROWL_DURATION
+      // Shrinking ends when:
+      //   age > growl.delay + GROWL_DURATION * 2
 
-    // Calculate how far advanced the dismissal process i
-    function setTransition(growl) {
-      const { time, delay, index } = growl
-      const age = Date.now() - time
-      if (age < delay + TIME * 2) {
-        const slideDelay = delay - age // negative
-        const shrinkDelay = TIME + slideDelay // may be negative
+      const { delay, off } = growl
 
-        if (shrinkDelay > 0) {
-          // Still sliding
-          const transition = `transform ${TIME}ms ${slideDelay}ms`
-          setDelay(index, "slide", transition)
-        } else {
-          // Already shrinking
-          const transition = `transform ${TIME}ms ${shrinkDelay}ms`
-          setDelay(index, "shrink", transition)
-        }
+      if (delay) {
+        growl.animation = `${appear(growl)}, ${vanish(growl)}`
+
+      } else if (off) {
+        // A manually dismissed growl has started closing
+        growl.animation = `${vanish(growl)}`
 
       } else {
-        // The growl should already have gone
-        return dismiss(index)
+        // A manually dismissed growl may still be opening
+        growl.animation = `${appear(growl)}`
       }
-    }
+
+      console.log("OLD growl.animation:", growl.animation)
+    })
+
+    forceRender()
   }
 
 
   const treatNewGrowls = () => {
     if (!growls) { return }
 
-    console.log("growls", JSON.stringify(growls, null, '  '));
-    
-
     const newGrowls = growls
       .filter( growl => !growl.active )
 
     if (newGrowls.length) {
-      // Calculate the duration of each new growl in milliseconds
-      const indexEnds = newGrowls.reduce(( indexEnd, growl ) => {
-        const { index, delay, time } = growl
-        const end = delay
-          ? time + delay - Date.now() // ms duration
-          : 0
-        indexEnd[index] = end
+      newGrowls.forEach(growl => {
+        // Update growl in situ, without any setState call
+        const { delay } = growl
+        if (delay) {
+          // Set animation for each new auto-dismissing growl
+          growl.animation = `${appear(growl)}, ${vanish(growl)}`
 
-        return indexEnd
-      }, {}) // { <index>: <millisecond duration>, ... }
+        } else {
+          // Manually dismissed growl just opens...
+          growl.animation = `${appear(growl)}`
+        }
 
-      console.log("indexEnds:", indexEnds)
+        growl.active = true
 
-      // Tell GrowlContext to add { ... active: true } to each
-      // of the new growls, and then re-render
-      setTimeout(() => start(indexEnds), 100)
+        console.log("NEW growl.animation:", growl.animation)
+
+      })
+
+      forceRender()
     }
   }
 
 
-  const hideGrowl = (event, index ) => {
+  const close = (event, index ) => {
     if (event) {
       // Calculate index from which growl's button was clicked
-      index = event.target.closest("p").dataset.index
+      index = Number(event.target.closest("p").dataset.index)
     }
 
-    closeGrowl(index)
+    dismissGrowl(index)
   }
 
 
-  const switchClass = ({ target }) => {
-    const { className } = target // "active", null, "shrink"
-    const index = Number(target.dataset.index)
-
-    if (!className) {
-      // The "active" class has been removed: slide the growl away
-      wrap(index)
-
-    } else if (className === "shrink") {
-      // The growl is off-screen, and now has a height of 0px.
-      // Remove the growl object from activeGrowls, which removes
+  const clear = ({ target, animationName }) => {
+    if (animationName === "vanish") {
+      // The growl is now off-screen, and has a height of 0px.
+      // Remove the growl object from growls, which removes
       // the growl element from the DOM.
 
-      dismiss(index)
+      const index = Number(target.dataset.index)
+      clearGrowls([index])
     }
   }
 
@@ -174,57 +184,52 @@ export default function Growler() {
 
 
 
-  useEffect(purgeOldGrowls, [])
-  useEffect(treatNewGrowls, [growls])
+  useEffect(treatOldGrowls, [])
+  useEffect(treatNewGrowls, [growls.length])
 
 
-  const growlArray = growls.map(({
-    message,
-    delay,
-    index,
-    active,
-    closing,
-    shrink,
-    slideDelay,
-    shrinkDelay
-  }) => {
-    // Choose between an HTML child or plain text.
-    const span = message.__html
-      ? <span dangerouslySetInnerHTML={message} />
-      : <span>{message}</span>
+  const growlArray = /*(!ready)
+    ? ""
+    :*/ growls.map(growl => {
+      const {
+        message,
+        delay,
+        index,
+        off,
+        animation
+      } = growl
 
-    const className = (shrink)
-      ? "shrink"
-      : (!active || closing )
-        ? null // the growl has just been created or is closing
-        : "active" // style.transform: translate(-100%)
+      // Choose between an HTML child or plain text.
+      const span = message.__html
+        ? <span dangerouslySetInnerHTML={message} />
+        : <span>{message}</span>
 
-    const style = (slideDelay && !shrink)
-      ? { transitionDelay: slideDelay } // removed if now shrinking
-      : (shrinkDelay)
-        ? { transitionDelay: shrinkDelay }
-        : {}
+      const style = (off)
+        ? { animation: vanish(growl) }
+        : ( animation )
+          ? { animation }
+          : {} // default opening animation will be applied
+      console.log("style:", style)
 
-    return (
-      <p
-        key={index}
-        data-index={index}
-        data-delay={delay}
-        className={className}
-        onTransitionEnd={switchClass}
-        style={style}
-      >
-        {(!delay || delay > 5555) &&
-          < button
-            onClick={hideGrowl}
-          >
-            ✕
-          </button>
-        }
-        {span}
-      </p>
-    )
-  })
+      return (
+        <p
+          key={index}
+          data-index={index}
+          data-delay={delay}
+          onAnimationEnd={clear}
+          style={style}
+        >
+          {(!delay || delay > 5555) &&
+            < button
+              onClick={close}
+            >
+              ✕
+            </button>
+          }
+          {span}
+        </p>
+      )
+    })
 
 
   return (

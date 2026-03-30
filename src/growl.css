@@ -1,0 +1,93 @@
+:root {
+  /* Animation duration (will be overwritten) */
+  --growl-duration: 500ms;
+  /* Required by @keyframes vanish */
+  --growl-height: 4.75em;
+}
+
+div#growls {
+  /* Growl colours */
+  --border: #f90;
+  --dark: #222d;
+  --long: #200d;
+  --high: #400d;
+  /* Dimensions */
+  --edge: 1px;
+  --side: calc(var(--edge) * -1);
+  --width: 300px;
+
+  position: absolute;
+  top: 0;
+  right: var(--edge);
+  width: var(--width);
+  text-align: center;
+  overflow: hidden;
+
+  p {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0 var(--gap) 0 1em;
+    width: 100%;
+    height: var(--growl-height);
+    background-color: var(--dark);
+    box-sizing: border-box;
+    border: var(--edge) outset var(--border);
+    border-radius: var(--gap);
+    overflow: auto;
+    /* Default appear animation, for growls without auto-dismiss */
+    animation: appear var(--growl-duration) linear forwards;
+  }
+
+  button {
+    position: absolute;
+    top: var(--side);
+    left: var(--side);
+    border-radius: var(--gap);
+    border: var(--edge) outset var(--border);
+    color: var(--light);
+
+    &:active {
+      border-style: inset;
+      color: #fff;
+    }
+  }
+
+  /* Priority appearance */
+  p:has(button) {
+    background-color: var(--long);
+
+    & button {
+      background-color: var(--long);
+    }
+  }
+
+  p[data-delay="0"] {
+    background-color: var(--high);
+
+    & button {
+      background-color: var(--high);
+    }
+  }
+}
+
+@keyframes appear {
+  0% {transform: translateX(100%);}
+  100% {transform: translateX(0%);}
+}
+
+@keyframes vanish {
+  0% {transform: translateX(0%);}
+  80% {
+    transform: translateX(100%);
+    height: var(--growl-height);
+    padding: 1em 0;
+  }
+  100% {
+    transform: translateX(100%);
+    height: 0;
+    padding: 0 0;
+  }
+}
